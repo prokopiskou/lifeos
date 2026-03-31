@@ -164,10 +164,14 @@ export default function OnboardingPage() {
 
     setIsAdvancing(false);
     setPhase("in");
-    window.location.href = "/dashboard";
+    window.location.href = "/dashboard?welcome=1";
   }
 
-  const progress = (currentIndex + 1) / questions.length;
+  const currentStep = Math.min(questions.length, currentIndex + 1);
+  const progressPercent = Math.min(
+    100,
+    Math.max(0, (currentStep / questions.length) * 100)
+  );
 
   function onPick(choice: string) {
     if (isAdvancing) return;
@@ -222,7 +226,7 @@ export default function OnboardingPage() {
               <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200">
                 <div
                   className="h-full bg-black transition-[width] duration-300 ease-out"
-                  style={{ width: `${Math.round(progress * 100)}%` }}
+                  style={{ width: `${progressPercent}%` }}
                 />
               </div>
             </div>

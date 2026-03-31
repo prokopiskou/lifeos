@@ -87,6 +87,34 @@ export default function LoginPage() {
     setMagicLoading(false);
   }
 
+  async function onForgotPassword() {
+    if (!supabase) {
+      setError("Φόρτωση σύνδεσης... δοκίμασε ξανά.");
+      return;
+    }
+    if (!email) {
+      setError("Συμπλήρωσε πρώτα το email σου.");
+      return;
+    }
+
+    setError(null);
+    setInfo(null);
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const redirectTo = `${siteUrl}/login`;
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+
+    setInfo("Στείλαμε email επαναφοράς κωδικού.");
+  }
+
   return (
     <main className="min-h-screen bg-white px-6 py-10">
       <div className="mx-auto flex max-w-md flex-col">
@@ -117,6 +145,14 @@ export default function LoginPage() {
               className="h-11 rounded-md border border-black/20 bg-white px-3 text-sm outline-none focus:border-black/50"
             />
           </label>
+
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            className="self-start text-sm font-medium text-black underline decoration-black/30 underline-offset-4 hover:decoration-black"
+          >
+            Forgot password?
+          </button>
 
           {error ? <p className="text-sm font-medium text-black">{error}</p> : null}
           {info ? <p className="text-sm font-medium text-neutral-700">{info}</p> : null}

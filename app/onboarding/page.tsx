@@ -164,7 +164,7 @@ export default function OnboardingPage() {
 
     setIsAdvancing(false);
     setPhase("in");
-    window.location.href = "/dashboard?welcome=1";
+    window.location.href = "/dashboard";
   }
 
   const currentStep = Math.min(questions.length, currentIndex + 1);

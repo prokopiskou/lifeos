@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { JOURNEY_WEEKS, getMicroChallenge, getWeekTheme, type JourneyRow } from "@/lib/journey";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 type TaskResponse = {
   title: string;
@@ -40,6 +43,11 @@ export default function DashboardClient({
   initialJourney,
   showWelcomeLoading,
 }: Props) {
+  const router = useRouter();
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(
+    null
+  );
+  const [accessReady, setAccessReady] = useState(false);
   const today = useMemo(() => new Date(), []);
   const todayLabel = useMemo(() => getGreekTodayLabel(today), [today]);
   const [journey, setJourney] = useState<JourneyRow>(initialJourney);
@@ -59,6 +67,30 @@ export default function DashboardClient({
   const daysToUnlock = Math.max(0, 7 - journey.current_day + 1);
   const filledDots = Math.min(7, Math.max(0, journey.week_tasks_completed));
   const todayKey = useMemo(() => getDateKey(today), [today]);
+
+  useEffect(() => {
+    setSupabase(createClient());
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    const run = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!active) return;
+      if (!user) {
+        router.replace("/login?redirectTo=/dashboard");
+        return;
+      }
+      setAccessReady(true);
+    };
+    void run();
+    return () => {
+      active = false;
+    };
+  }, [router, supabase]);
 
   useEffect(() => {
     if (!showWelcomeLoading) return;
@@ -91,6 +123,7 @@ export default function DashboardClient({
   }, [todayKey]);
 
   useEffect(() => {
+    if (!accessReady) return;
     if (completedToday) {
       setLoading(false);
       return;
@@ -158,6 +191,7 @@ export default function DashboardClient({
       controller.abort();
     };
   }, [
+    accessReady,
     answers,
     completedToday,
     journey.current_day,
@@ -208,7 +242,7 @@ export default function DashboardClient({
     setRetryNonce((v) => v + 1);
   }
 
-  if (loadingPlan) {
+  if (loadingPlan || !accessReady) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-white px-6">
         <div className="w-full max-w-xl text-center">
@@ -225,6 +259,11 @@ export default function DashboardClient({
     <main className="min-h-screen bg-white px-10 py-10 text-black">
       <div className="mx-auto flex w-full max-w-[480px] flex-col">
         <header className="mb-8 text-center">
+          <div className="mb-4 flex items-center justify-center gap-4 text-sm text-neutral-600">
+            <Link href="/community" className="underline decoration-black/20 underline-offset-4">
+              Κοινότητα
+            </Link>
+          </div>
           <p className="text-[12px] uppercase tracking-[0.16em] text-neutral-500">
             Εβδομάδα {journey.current_week} · Ημέρα {journey.current_day}
           </p>

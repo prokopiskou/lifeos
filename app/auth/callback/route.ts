@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { normalizeOnboardingAnswers } from "@/lib/onboarding-answers";
 import { createClient } from "@/lib/supabase/server";
 
 function resolveRedirect(redirectTo: string | null | undefined, requestUrl: string) {
-  const fallback = "/pricing";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || requestUrl;
+  const fallback = "/dashboard";
   const value = redirectTo || fallback;
 
   try {
@@ -13,7 +13,7 @@ function resolveRedirect(redirectTo: string | null | undefined, requestUrl: stri
     new URL(value);
     return value;
   } catch {
-    return new URL(value, requestUrl).toString();
+    return new URL(value, baseUrl).toString();
   }
 }
 
@@ -44,40 +44,8 @@ export async function GET(req: Request) {
     return NextResponse.redirect(target);
   }
 
-  // Priority:
-  // 1) Explicit redirectTo if present
-  // 2) Derived flow: pricing vs onboarding vs dashboard
-  if (explicitRedirectTo) {
-    const target = resolveRedirect(explicitRedirectTo, req.url);
-    return NextResponse.redirect(target);
-  }
-
-  const [{ data: subRow }, { data: onboardingRows }] = await Promise.all([
-    supabase
-      .from("subscriptions")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle(),
-    supabase
-      .from("onboarding_answers")
-      .select("answers")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1),
-  ]);
-
-  const hasActiveSubscription = Boolean(subRow);
-  const latestOnboarding = Array.isArray(onboardingRows) ? onboardingRows[0] : null;
-  const onboardingDone = normalizeOnboardingAnswers(latestOnboarding?.answers) !== null;
-
-  const nextPath = !hasActiveSubscription
-    ? "/pricing"
-    : onboardingDone
-      ? "/dashboard"
-      : "/onboarding";
-
-  const target = resolveRedirect(nextPath, req.url);
+  // After successful auth callback, always land on dashboard.
+  const target = resolveRedirect("/dashboard", req.url);
   return NextResponse.redirect(target);
 }
 

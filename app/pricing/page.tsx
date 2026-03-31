@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,11 +15,9 @@ type Props = {
 
 export default async function PricingPage({ searchParams }: Props) {
   const supabase = createClient();
-  const { data: userData, error } = await supabase.auth.getUser();
-
-  if (error || !userData.user) {
-    redirect("/signup");
-  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const checkoutRaw = searchParams.checkout;
   const checkoutCode =
@@ -32,7 +29,7 @@ export default async function PricingPage({ searchParams }: Props) {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-10">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-[480px]">
         <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm sm:p-8">
           <h1 className="text-2xl font-semibold text-black">Τιμές</h1>
           <p className="mt-2 text-sm text-neutral-600">
@@ -65,38 +62,65 @@ export default async function PricingPage({ searchParams }: Props) {
             <li className="text-sm text-black">Live sessions / Q&A</li>
           </ul>
 
-          <form
-            action="/api/stripe/create-checkout"
-            method="POST"
-            className="mt-8"
-          >
-            <button
-              type="submit"
-              className={[
-                "h-12 w-full rounded-xl border border-black/20 px-4 text-sm font-medium transition",
-                "bg-black text-white hover:bg-neutral-900",
-              ].join(" ")}
+          {user ? (
+            <form
+              action="/api/stripe/create-checkout"
+              method="POST"
+              className="mt-8"
+            >
+              <button
+                type="submit"
+                className={[
+                  "h-12 w-full rounded-xl border border-black/20 px-4 text-sm font-medium transition",
+                  "bg-black text-white hover:bg-neutral-900",
+                ].join(" ")}
+              >
+                Ξεκίνα τώρα
+              </button>
+            </form>
+          ) : (
+            <Link
+              href="/signup"
+              className="mt-8 inline-flex h-12 w-full items-center justify-center rounded-xl border border-black/20 bg-black px-4 text-sm font-medium text-white transition hover:bg-neutral-900"
             >
               Ξεκίνα τώρα
-            </button>
-          </form>
+            </Link>
+          )}
         </div>
 
-        <p className="mt-6 text-center text-sm text-neutral-600">
-          <Link
-            href="/login"
-            className="font-medium text-black underline decoration-black/30 underline-offset-4 hover:decoration-black"
-          >
-            Σύνδεση
-          </Link>
-          {" · "}
-          <Link
-            href="/"
-            className="font-medium text-black underline decoration-black/30 underline-offset-4 hover:decoration-black"
-          >
-            Αρχική
-          </Link>
-        </p>
+        {user ? (
+          <p className="mt-6 text-center text-sm text-neutral-600">
+            <Link
+              href="/"
+              className="font-medium text-black underline decoration-black/30 underline-offset-4 hover:decoration-black"
+            >
+              Αρχική
+            </Link>
+          </p>
+        ) : (
+          <p className="mt-6 text-center text-sm text-neutral-600">
+            <Link
+              href="/login"
+              className="font-medium text-black underline decoration-black/30 underline-offset-4 hover:decoration-black"
+            >
+              Σύνδεση
+            </Link>
+            {" · "}
+            <Link
+              href="/signup"
+              className="font-medium text-black underline decoration-black/30 underline-offset-4 hover:decoration-black"
+            >
+              Εγγραφή
+            </Link>
+            {" · "}
+            <Link
+              href="/"
+              className="font-medium text-black underline decoration-black/30 underline-offset-4 hover:decoration-black"
+            >
+              Αρχική
+            </Link>
+          </p>
+        )}
       </div>
     </main>
   );

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { clampDay, clampWeek, type JourneyRow } from "@/lib/journey";
 import { normalizeOnboardingAnswers } from "@/lib/onboarding-answers";
 import { createClient } from "@/lib/supabase/server";
+import LogoutButton from "@/components/LogoutButton";
 import DashboardClient from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -81,10 +82,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   };
 
   return (
-    <DashboardClient
-      answers={parsed}
-      initialJourney={initialJourney}
-      showWelcomeLoading={searchParams?.welcome === "1"}
-    />
+    <>
+      <DashboardClient
+        answers={parsed}
+        initialJourney={initialJourney}
+        showWelcomeLoading={searchParams?.welcome === "1"}
+      />
+      <LogoutButton />
+    </>
   );
 }

@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(
     null
   );
+  const [initError, setInitError] = useState<string | null>(null);
 
   const [redirectTo, setRedirectTo] = useState("/dashboard");
 
@@ -26,31 +27,62 @@ export default function LoginPage() {
   const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
-    setSupabase(createClient());
+    try {
+      setSupabase(createClient());
+      setInitError(null);
+    } catch (e) {
+      setSupabase(null);
+      setInitError(
+        e instanceof Error
+          ? e.message
+          : "Δεν ήταν δυνατή η αρχικοποίηση σύνδεσης. Έλεγξε τα Supabase env vars."
+      );
+    }
   }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!supabase) {
-      setError("Φόρτωση σύνδεσης... δοκίμασε ξανά.");
-      return;
+    let client = supabase;
+    if (!client) {
+      try {
+        client = createClient();
+        setSupabase(client);
+        setInitError(null);
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Δεν ήταν δυνατή η σύνδεση με το Supabase. Έλεγξε το .env.local."
+        );
+        return;
+      }
     }
+
     setLoading(true);
     setError(null);
     setInfo(null);
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error: signInError } = await client.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (signInError) {
-      setError(signInError.message);
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      router.replace(redirectTo);
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Αποτυχία σύνδεσης. Δοκίμασε ξανά."
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.replace(redirectTo);
   }
 
   async function onMagicLink() {
@@ -116,14 +148,15 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white px-6 py-10">
-      <div className="mx-auto flex max-w-md flex-col">
-        <h1 className="text-2xl font-semibold">Σύνδεση</h1>
-        <p className="mt-2 text-sm text-neutral-600">
-          Εισάγετε τα στοιχεία σας για να συνεχίσετε.
-        </p>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-10">
+      <div className="w-full max-w-2xl">
+        <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm sm:p-8">
+          <h1 className="text-2xl font-semibold">Σύνδεση</h1>
+          <p className="mt-2 text-sm text-neutral-600">
+            Εισάγετε τα στοιχεία σας για να συνεχίσετε.
+          </p>
 
-        <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-4">
+          <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-4">
           <label className="flex flex-col gap-2">
             <span className="text-sm font-medium">Email</span>
             <input
@@ -154,11 +187,12 @@ export default function LoginPage() {
             Forgot password?
           </button>
 
+          {initError ? <p className="text-sm font-medium text-black">{initError}</p> : null}
           {error ? <p className="text-sm font-medium text-black">{error}</p> : null}
           {info ? <p className="text-sm font-medium text-neutral-700">{info}</p> : null}
 
           <button
-            disabled={loading}
+            disabled={loading || Boolean(initError)}
             type="submit"
             className="mt-2 h-11 rounded-md bg-black px-4 text-sm font-medium text-white transition hover:bg-neutral-900 disabled:opacity-50"
           >
@@ -173,7 +207,8 @@ export default function LoginPage() {
           >
             {magicLoading ? "Αποστολή..." : "Σύνδεση με magic link"}
           </button>
-        </form>
+          </form>
+        </div>
 
         <p className="mt-6 text-center text-sm text-neutral-600">
           Δεν έχετε λογαριασμό;{" "}

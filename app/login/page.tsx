@@ -21,7 +21,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [magicLoading, setMagicLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
     setSupabase(createClient());
@@ -35,6 +37,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError(null);
+    setInfo(null);
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
@@ -48,6 +51,40 @@ export default function LoginPage() {
     }
 
     router.replace(redirectTo);
+  }
+
+  async function onMagicLink() {
+    if (!supabase) {
+      setError("Φόρτωση σύνδεσης... δοκίμασε ξανά.");
+      return;
+    }
+    if (!email) {
+      setError("Συμπλήρωσε πρώτα το email σου.");
+      return;
+    }
+
+    setMagicLoading(true);
+    setError(null);
+    setInfo(null);
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const emailRedirectTo = `${siteUrl}/auth/callback`;
+
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo,
+      },
+    });
+
+    if (otpError) {
+      setError(otpError.message);
+      setMagicLoading(false);
+      return;
+    }
+
+    setInfo("Στείλαμε magic link στο email σου.");
+    setMagicLoading(false);
   }
 
   return (
@@ -82,6 +119,7 @@ export default function LoginPage() {
           </label>
 
           {error ? <p className="text-sm font-medium text-black">{error}</p> : null}
+          {info ? <p className="text-sm font-medium text-neutral-700">{info}</p> : null}
 
           <button
             disabled={loading}
@@ -89,6 +127,15 @@ export default function LoginPage() {
             className="mt-2 h-11 rounded-md bg-black px-4 text-sm font-medium text-white transition hover:bg-neutral-900 disabled:opacity-50"
           >
             {loading ? "Σύνδεση..." : "Συνδέομαι"}
+          </button>
+
+          <button
+            disabled={magicLoading}
+            type="button"
+            onClick={onMagicLink}
+            className="h-11 rounded-md border border-black/20 bg-white px-4 text-sm font-medium text-black transition hover:bg-neutral-100 disabled:opacity-50"
+          >
+            {magicLoading ? "Αποστολή..." : "Σύνδεση με magic link"}
           </button>
         </form>
 

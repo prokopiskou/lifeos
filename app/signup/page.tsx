@@ -56,8 +56,8 @@ export default function SignupPage() {
     setInfo(null);
 
     try {
-      const origin = window.location.origin;
-      const emailRedirectTo = `${origin}/auth/callback?redirectTo=/pricing`;
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const emailRedirectTo = `${siteUrl}/auth/callback?redirectTo=/pricing`;
 
       const { data, error: signUpError } = await client.auth.signUp({
         email,

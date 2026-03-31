@@ -39,6 +39,8 @@ export default function CommunityFeedClient() {
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [postingComment, setPostingComment] = useState<Record<string, boolean>>({});
 
   async function loadFeed() {
     setLoading(true);
@@ -118,6 +120,37 @@ export default function CommunityFeedClient() {
     setLoadingComments((prev) => ({ ...prev, [postId]: false }));
   }
 
+  async function addComment(postId: string) {
+    const draft = (commentDrafts[postId] ?? "").trim();
+    if (!draft) return;
+
+    setPostingComment((prev) => ({ ...prev, [postId]: true }));
+    const res = await fetch("/api/community/comments", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ postId, content: draft }),
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as { comment: Comment };
+      const created = data.comment;
+      if (created) {
+        setComments((prev) => ({
+          ...prev,
+          [postId]: [...(prev[postId] ?? []), created],
+        }));
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p
+          )
+        );
+        setCommentDrafts((prev) => ({ ...prev, [postId]: "" }));
+      }
+    }
+
+    setPostingComment((prev) => ({ ...prev, [postId]: false }));
+  }
+
   return (
     <main className="min-h-screen bg-white px-10 py-10 text-black">
       <div className="mx-auto w-full max-w-[480px]">
@@ -187,7 +220,8 @@ export default function CommunityFeedClient() {
                   <button
                     type="button"
                     onClick={() => void toggleLike(post.id)}
-                    className="transition hover:text-black"
+                    className="transition"
+                    style={{ color: post.liked_by_me ? ACCENT : "#737373" }}
                   >
                     {post.liked_by_me ? "♥" : "♡"} {post.likes_count}
                   </button>
@@ -204,17 +238,44 @@ export default function CommunityFeedClient() {
                   <div className="mt-4 border-t border-black/10 pt-4">
                     {loadingComments[post.id] ? (
                       <p className="text-sm text-neutral-500">Φόρτωση σχολίων...</p>
-                    ) : (comments[post.id] ?? []).length > 0 ? (
-                      <div className="space-y-3">
-                        {(comments[post.id] ?? []).map((c) => (
-                          <div key={c.id} className="rounded-lg bg-neutral-50 px-3 py-2">
-                            <p className="text-xs text-neutral-500">{c.author_label}</p>
-                            <p className="mt-1 text-sm text-neutral-800">{c.content}</p>
-                          </div>
-                        ))}
-                      </div>
                     ) : (
-                      <p className="text-sm text-neutral-500">Δεν υπάρχουν σχόλια ακόμα.</p>
+                      <div>
+                        {(comments[post.id] ?? []).length > 0 ? (
+                          <div className="space-y-3">
+                            {(comments[post.id] ?? []).map((c) => (
+                              <div key={c.id} className="rounded-lg bg-neutral-50 px-3 py-2">
+                                <p className="text-xs text-neutral-500">{c.author_label}</p>
+                                <p className="mt-1 text-sm text-neutral-800">{c.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-neutral-500">Δεν υπάρχουν σχόλια ακόμα.</p>
+                        )}
+
+                        <div className="mt-4 flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={commentDrafts[post.id] ?? ""}
+                            onChange={(e) =>
+                              setCommentDrafts((prev) => ({
+                                ...prev,
+                                [post.id]: e.target.value,
+                              }))
+                            }
+                            placeholder="Γράψε σχόλιο..."
+                            className="h-10 flex-1 rounded-lg border border-black/15 px-3 text-sm outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void addComment(post.id)}
+                            disabled={postingComment[post.id] || !(commentDrafts[post.id] ?? "").trim()}
+                            className="h-10 rounded-lg bg-black px-3 text-sm text-white disabled:opacity-50"
+                          >
+                            {postingComment[post.id] ? "..." : "Αποστολή"}
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ) : null}

@@ -244,7 +244,7 @@ export default function DashboardClient({
 
   if (loadingPlan || !accessReady) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-white px-6">
+      <main className="flex min-h-screen items-center justify-center bg-white px-6 pb-20">
         <div className="w-full max-w-xl text-center">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-black/20 border-t-black" />
           <p className="mt-5 text-base text-black">
@@ -256,7 +256,7 @@ export default function DashboardClient({
   }
 
   return (
-    <main className="min-h-screen bg-white px-10 py-10 text-black">
+    <main className="min-h-screen bg-white px-10 py-10 pb-20 text-black">
       <div className="mx-auto flex w-full max-w-[480px] flex-col">
         <header className="mb-8 text-center">
           <div className="mb-4 flex items-center justify-center gap-4 text-sm text-neutral-600">

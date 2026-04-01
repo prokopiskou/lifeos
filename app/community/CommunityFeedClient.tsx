@@ -152,7 +152,7 @@ export default function CommunityFeedClient() {
   }
 
   return (
-    <main className="min-h-screen bg-white px-10 py-10 text-black">
+    <main className="min-h-screen bg-white px-10 py-10 pb-20 text-black">
       <div className="mx-auto w-full max-w-[480px]">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="text-[30px] font-semibold tracking-tight">Κοινότητα</h1>

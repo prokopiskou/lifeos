@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import BottomNav from "@/components/BottomNav";
 import LogoutButton from "@/components/LogoutButton";
 import { createClient } from "@/lib/supabase/server";
 import CommunityFeedClient from "./CommunityFeedClient";
@@ -20,6 +21,7 @@ export default async function CommunityPage() {
     <>
       <CommunityFeedClient />
       <LogoutButton />
+      <BottomNav />
     </>
   );
 }

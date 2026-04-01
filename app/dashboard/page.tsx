@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { clampDay, clampWeek, type JourneyRow } from "@/lib/journey";
 import { normalizeOnboardingAnswers } from "@/lib/onboarding-answers";
 import { createClient } from "@/lib/supabase/server";
+import BottomNav from "@/components/BottomNav";
 import LogoutButton from "@/components/LogoutButton";
 import DashboardClient from "./DashboardClient";
 
@@ -89,6 +90,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         showWelcomeLoading={searchParams?.welcome === "1"}
       />
       <LogoutButton />
+      <BottomNav />
     </>
   );
 }

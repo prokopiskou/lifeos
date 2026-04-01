@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const MAILERLITE_API_KEY = process.env.MAILERLITE_API_KEY!;
 
+// Map answer text to MailerLite group ID
 const GROUP_MAP: Record<string, string> = {
   "Βάζω πάντα τους άλλους πρώτους - και έχω κουραστεί.": "183496750579844807",
   "Ξέρω τι πρέπει να κάνω. Αλλά δεν το κάνω. Και αυτό με βαραίνει.": "183496756599718945",
@@ -14,7 +15,9 @@ export async function POST(req: NextRequest) {
 
     const fields = body?.data?.fields as Array<{
       label: string;
+      type: string;
       value: string | string[];
+      options?: Array<{ id: string; text: string }>;
     }>;
 
     if (!fields) {
@@ -22,29 +25,43 @@ export async function POST(req: NextRequest) {
     }
 
     // Extract email
-    const emailField = fields.find((f) => f.label.toLowerCase() === "email");
+    const emailField = fields.find((f) => f.type === "INPUT_EMAIL");
     const email = emailField?.value as string;
 
     if (!email) {
       return NextResponse.json({ error: "No email found" }, { status: 400 });
     }
 
-    // Extract last question answer (last field that's not email)
-    const lastField = [...fields].reverse().find((f) => f.label.toLowerCase() !== "email");
-    const answer = Array.isArray(lastField?.value)
-      ? lastField!.value[0]
-      : lastField?.value;
+    // Find last multiple choice field (the final question)
+    const lastChoiceField = [...fields]
+      .reverse()
+      .find((f) => f.type === "MULTIPLE_CHOICE" && f.options);
 
-    if (!answer) {
-      return NextResponse.json({ error: "No answer found" }, { status: 400 });
+    if (!lastChoiceField || !lastChoiceField.options) {
+      return NextResponse.json({ error: "No choice field found" }, { status: 400 });
+    }
+
+    // Get selected UUID(s)
+    const selectedIds = Array.isArray(lastChoiceField.value)
+      ? lastChoiceField.value
+      : [lastChoiceField.value];
+
+    // Map UUID to text
+    const selectedText = lastChoiceField.options.find(
+      (opt) => opt.id === selectedIds[0]
+    )?.text;
+
+    console.log("Selected answer:", selectedText);
+
+    if (!selectedText) {
+      return NextResponse.json({ error: "Could not resolve answer text" }, { status: 400 });
     }
 
     // Find matching group
-    const groupId = GROUP_MAP[answer.trim()];
+    const groupId = GROUP_MAP[selectedText.trim()];
 
     if (!groupId) {
-      console.warn("No group match for answer:", answer);
-      // Still add subscriber without group
+      console.warn("No group match for answer:", selectedText);
     }
 
     // Add subscriber to MailerLite

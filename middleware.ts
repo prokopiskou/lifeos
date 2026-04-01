@@ -6,7 +6,7 @@ export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Always public - never redirect these.
-  const isAlwaysPublicPath = pathname === "/" || pathname.startsWith("/auth");
+  const isAlwaysPublicPath = pathname === "/" || pathname.startsWith("/auth") || pathname.startsWith("/api/tally-webhook");
   if (isAlwaysPublicPath) {
     return NextResponse.next();
   }

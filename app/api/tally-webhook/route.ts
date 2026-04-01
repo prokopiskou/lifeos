@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         email,
-        groups: groupId ? [groupId] : [],
+        groups: groupId ? [groupId, "183574050021311627"] : ["183574050021311627"],
       }),
     });
 

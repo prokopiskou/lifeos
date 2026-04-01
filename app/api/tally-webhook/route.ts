@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Extract email
-    const emailField = fields.find((f) => f.type === "INPUT_EMAIL");
+    const emailField = fields.find((f) => f.type === "INPUT_EMAIL" && f.value);
     const email = emailField?.value as string;
 
     if (!email) {

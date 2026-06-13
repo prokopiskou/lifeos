@@ -1,22 +1,28 @@
 # Within OS — PROGRESS
 
 ## ✅ Phase 0 — Σταθεροποίηση + redirect loop
-- **Διορθώθηκε** το `middleware.ts`: authenticated users σε auth-landing pages (`/login`, `/signup`, `/pricing`) δεν κολλάνε πια. Πάνε `/onboarding` (αν δεν έχουν `onboarding_answers`) ή `/dashboard` (αν έχουν). Αφαιρέθηκε το subscription-gate από το redirect (trial δίνει πρόσβαση).
-- Εκκρεμεί ακόμα (Phase 0 nice-to-have): post-onboarding loading animation.
+- `middleware.ts`: authenticated users σε auth-landing pages → `/onboarding` (αν δεν έγινε onboarding) ή `/dashboard`. Έλεγχος `profiles.onboarding_done` ΚΑΙ `onboarding_answers` (non-breaking για παλιούς χρήστες).
 
 ## ✅ Phase 1 — Data model + RLS
-- `supabase/within_os_schema.sql` (idempotent) — **ΕΧΕΙ ΗΔΗ ΤΡΕΞΕΙ LIVE** στο Supabase project `ggzohctistxaaiguufjw` (Success, no rows returned).
-- Πίνακες: `profiles` (επεκτάθηκε), `daily_checkins`, `user_state_daily`, `task_calibration`, `evidence_tasks`, `pattern_mirrors`, `path_letters`, `health_daily`. RLS ενεργό (κάθε χρήστης βλέπει μόνο τα δικά του· service role παρακάμπτει).
+- `supabase/within_os_schema.sql` — **ΕΧΕΙ ΤΡΕΞΕΙ LIVE** στο Supabase (`ggzohctistxaaiguufjw`). 8 πίνακες + RLS ενεργό.
 
-## 🟡 Phase 2 — Design system + Within Grid (ξεκίνησε)
-- `app/globals.css`: tokens (ink/paper/gold/grey), `.within-btn` (bordered, sharp), animations, `--font-within` (CMU Concrete → serif fallback).
-- `components/WithinGrid.tsx`: reusable 2-axis grid, tap → συνεχείς (x,y), quadrant label, weekly dots, readOnly mode.
-- **Εκκρεμεί:** εφαρμογή tokens σε όλες τις σελίδες· φόρτωση πραγματικού CMU Concrete font file (δες DECISIONS).
+## ✅ Phase 2 — Design system + Within Grid
+- `app/globals.css`: tokens (ink/paper/gold/grey), `.within-btn`, animations, `--font-within`.
+- `components/WithinGrid.tsx`: reusable 2-axis grid + `quadrantOf()` helper.
+
+## ✅ Phase 3 — Onboarding (10 οθόνες)
+- `app/onboarding/page.tsx`: πλήρες flow με ακριβές ελληνικό copy. Gender επιλογή (f/m/n), identity input + whispered παραδείγματα (6''), mirror moment (5'' χωρίς κουμπί), anti-promise, first taste (WithinGrid), first reflection (quadrant × answer × gender), glimpse, notifications. Στο τέλος γράφει `profiles` (identity_statement, identity_gender, identity_locked_until=+30, within_path_stage='awake', onboarding_done=true, notify_time) → redirect `/dashboard`.
+
+## ✅ Phase 4 — State Engine + nightly cron
+- `app/api/cron/compute-state/route.ts`: protected με `CRON_SECRET`. Υπολογίζει AR_7d, trajectory, volatility, engagement_integrity, body_gap, early signals. Rule engine 7 καταστάσεων (**masking ελέγχεται ΠΡΙΝ το momentum**). Γράφει `user_state_daily` (σήμερα) + `task_calibration` (αύριο) μέσω admin client.
+- `vercel.json`: cron `/api/cron/compute-state` κάθε βράδυ 23:30 (`30 23 * * *`).
+- ✅ `npx tsc --noEmit` περνάει χωρίς errors.
 
 ## ⏳ Επόμενα (μη ξεκινημένα)
-Phase 3 onboarding (10 οθόνες) · Phase 4 state engine + nightly cron · Phase 5 daily flow + task gen + tone · Phase 6 pattern mirror · Phase 7 within path + admin · Phase 8 polish/paywall/PWA.
+Phase 5 daily flow (check-in UI + task generation πρωί + tone messaging βράδυ) · Phase 6 pattern mirror (weekly cron + 15 rules + admin override) · Phase 7 within path + admin panel · Phase 8 polish/paywall(test)/PWA.
 
 ## ⚠️ Χειροκίνητες ενέργειες owner
-1. **Push** τα τοπικά commits (το sandbox δεν έχει credentials).
-2. **Env vars** (Vercel, μετά το key rotation): `ANTHROPIC_API_KEY`, `CRON_SECRET`, `STRIPE_*` (test), `NEXT_PUBLIC_APP_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
-3. **CMU Concrete font**: βάλε τα αρχεία στο `/public/fonts/` + `@font-face` (αλλιώς πέφτει σε serif fallback).
+1. **Push** τα τοπικά commits.
+2. **Env vars** (Vercel): `ANTHROPIC_API_KEY`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_*` (test), `NEXT_PUBLIC_APP_URL`. (Vercel cron στέλνει αυτόματα `Authorization: Bearer $CRON_SECRET` όταν υπάρχει το env var.)
+3. **CMU Concrete font** files στο `/public/fonts/` + `@font-face` (αλλιώς serif fallback).
+4. Το `/api/cron/compute-state` χρειάζεται **Vercel Pro** για να τρέξει αυτόματα το cron (Hobby: περιορισμένα/καθόλου). Εναλλακτικά external trigger (GitHub Actions) με το `CRON_SECRET` header.

@@ -1,294 +1,321 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { normalizeOnboardingAnswers } from "@/lib/onboarding-answers";
 import { createClient } from "@/lib/supabase/client";
+import WithinGrid, { quadrantOf, type GridPoint } from "@/components/WithinGrid";
 
-type Question = {
-  prompt: string;
-  choices: string[];
+type Gender = "f" | "m" | "n";
+type Answer = "yes" | "no" | "partial";
+
+const TYPE_LABEL: Record<Gender, string> = {
+  f: "Γυναίκα που",
+  m: "Άντρας που",
+  n: "Άνθρωπος που",
 };
+
+const WHISPERS: Record<Gender, string[]> = {
+  f: [
+    "Γυναίκα που δεν εξηγείται",
+    "Γυναίκα που μένει με αυτό που νιώθει",
+    "Γυναίκα που δεν χρειάζεται έγκριση",
+    "Γυναίκα που λέει όχι χωρίς ενοχή",
+    "Γυναίκα που τελειώνει αυτό που ξεκινάει",
+    "Γυναίκα που δεν επιστρέφει σε ό,τι την έσπασε",
+    "Γυναίκα που εμπιστεύεται την παρόρμησή της",
+  ],
+  m: [
+    "Άντρας που δεν εξηγείται",
+    "Άντρας που μένει με αυτό που νιώθει",
+    "Άντρας που δεν χρειάζεται έγκριση",
+    "Άντρας που λέει όχι χωρίς ενοχή",
+    "Άντρας που τελειώνει αυτό που ξεκινάει",
+    "Άντρας που δεν επιστρέφει σε ό,τι τον έσπασε",
+    "Άντρας που εμπιστεύεται την παρόρμησή του",
+  ],
+  n: [
+    "Άνθρωπος που δεν εξηγείται",
+    "Άνθρωπος που μένει με αυτό που νιώθει",
+    "Άνθρωπος που δεν χρειάζεται έγκριση",
+    "Άνθρωπος που λέει όχι χωρίς ενοχή",
+    "Άνθρωπος που τελειώνει αυτό που ξεκινάει",
+    "Άνθρωπος που δεν επιστρέφει σε ό,τι τον έσπασε",
+    "Άνθρωπος που εμπιστεύεται την παρόρμησή του",
+  ],
+};
+
+const PRONOUN: Record<Gender, string> = { f: "αυτή", m: "αυτός", n: "αυτό" };
+
+function quadrantLine(q: string, g: Gender): string {
+  if (q === "aligned") return "Σήμερα ήσουν εσύ.";
+  if (q === "restorative") return "Σήμερα ήσουν σε ειρήνη.";
+  if (q === "reactive") return "Σήμερα ήσουν σε φόβο.";
+  return g === "f" ? "Σήμερα ήσουν καμένη." : g === "m" ? "Σήμερα ήσουν καμένος." : "Σήμερα ήσουν καμένο.";
+}
+
+function actionLine(a: Answer, g: Gender): string {
+  const who = PRONOUN[g];
+  if (a === "no") return `Και δεν έδρασες ως ${who} που χτίζεις.`;
+  if (a === "partial") return `Και έδρασες λίγο ως ${who} που χτίζεις.`;
+  return `Και έδρασες ως ${who} που χτίζεις.`;
+}
+
+// Wrapper οθόνης
+function Screen({ dark, children }: { dark?: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className="within"
+      style={{
+        minHeight: "100dvh",
+        background: dark ? "#000000" : "#FAFAF7",
+        color: dark ? "#FAFAF7" : "#000000",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "32px 24px",
+        textAlign: "center",
+        gap: 24,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Btn({ onClick, children, dark }: { onClick: () => void; children: React.ReactNode; dark?: boolean }) {
+  return (
+    <button className={`within-btn${dark ? " within-btn--invert" : ""}`} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(
-    null
-  );
+  const [step, setStep] = useState(1);
+  const [gender, setGender] = useState<Gender | null>(null);
+  const [identity, setIdentity] = useState("");
+  const [showWhispers, setShowWhispers] = useState(false);
+  const [mirrorReady, setMirrorReady] = useState(false);
+  const [grid, setGrid] = useState<GridPoint | null>(null);
+  const [answer, setAnswer] = useState<Answer | null>(null);
+  const [notify, setNotify] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const next = () => setStep((s) => s + 1);
 
-  const questions: Question[] = useMemo(
-    () => [
-      {
-        prompt: "Πώς θα περιέγραφες τον εαυτό σου αυτή τη στιγμή;",
-        choices: [
-          "Ξέρω τι θέλω αλλά δεν κινούμαι",
-          "Δεν ξέρω τι θέλω και νιώθω χαμένος",
-          "Νιώθω καλά αλλά θέλω κάτι περισσότερο",
-          "Είμαι σε μια δύσκολη περίοδο και χρειάζομαι στήριξη",
-        ],
-      },
-      {
-        prompt: "Τι σε κρατάει πίσω περισσότερο;",
-        choices: [
-          "Ο φόβος της αποτυχίας ή της κριτικής",
-          "Η υπερανάλυση — σκέφτομαι πολύ, κάνω λίγο",
-          "Η έλλειψη αυτοπεποίθησης",
-          "Το άγχος και η ένταση που νιώθω συχνά",
-        ],
-      },
-      {
-        prompt: "Αν άλλαζε ένα πράγμα στη ζωή σου, τι θα ήταν;",
-        choices: [
-          "Η σχέση μου με τον εαυτό μου",
-          "Η δουλειά μου / ο σκοπός μου",
-          "Οι σχέσεις μου με άλλους",
-          "Η καθημερινότητά μου / η ρουτίνα μου",
-        ],
-      },
-      {
-        prompt: "Πώς μαθαίνεις και αλλάζεις καλύτερα;",
-        choices: [
-          "Με μικρά βήματα κάθε μέρα",
-          "Με βαθιά κατανόηση του γιατί",
-          "Με υποστήριξη από άλλους",
-          "Με δράση — δοκιμάζω και βλέπω",
-        ],
-      },
-      {
-        prompt: "Πού βρίσκεσαι τώρα;",
-        choices: [
-          "Έτοιμος να κάνω αλλαγές, χρειάζομαι κατεύθυνση",
-          "Θέλω αλλαγή αλλά φοβάμαι",
-          "Ψάχνω ακόμα — δεν είμαι σίγουρος",
-          "Είμαι σε κρίση και χρειάζομαι στήριξη τώρα",
-        ],
-      },
-    ],
-    []
-  );
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<string[]>(() => Array(5).fill(""));
-
-  const [phase, setPhase] = useState<"in" | "out">("in");
-  const [isAdvancing, setIsAdvancing] = useState(false);
-  const advanceTimeoutRef = useRef<number | null>(null);
-
-  const [authReady, setAuthReady] = useState(false);
-  const [savingError, setSavingError] = useState<string | null>(null);
-  /** Stripe return URL: middleware skips subscription until webhook writes DB — no client-side subscription gate. */
-  const [postPaymentReturn, setPostPaymentReturn] = useState(false);
-
+  // Screen 4: whispered examples μετά από 6s inactivity
   useEffect(() => {
-    setPostPaymentReturn(
-      new URLSearchParams(window.location.search).get("payment") === "success"
-    );
-  }, []);
+    if (step !== 4 || !gender) return;
+    setShowWhispers(false);
+    const t = setTimeout(() => setShowWhispers(true), 6000);
+    return () => clearTimeout(t);
+  }, [step, gender]);
 
+  // Screen 5: mirror moment — 5s ΧΩΡΙΣ κουμπί
   useEffect(() => {
-    // Defer Supabase client creation to the browser.
-    // This avoids `next build` prerendering crashes when env vars aren't present yet.
-    setSupabase(createClient());
-  }, []);
+    if (step !== 5) return;
+    setMirrorReady(false);
+    const t = setTimeout(() => setMirrorReady(true), 5000);
+    return () => clearTimeout(t);
+  }, [step]);
 
-  useEffect(() => {
-    if (!supabase) return;
-
-    let active = true;
-    supabase.auth
-      .getUser()
-      .then(({ data }) => {
-        if (!active) return;
-        if (!data.user) {
-          router.replace("/login");
-          return;
-        }
-        setAuthReady(true);
-      })
-      .catch(() => {
-        if (!active) return;
-        router.replace("/login");
-      });
-    return () => {
-      active = false;
-    };
-  }, [router, supabase]);
-
-  async function saveToSupabase(nextAnswers: string[]) {
-    if (!supabase) return;
-    setSavingError(null);
-
-    const { data, error: userError } = await supabase.auth.getUser();
-    if (userError) {
-      setSavingError("Δεν ήταν δυνατή η σύνδεση. Δοκίμασε ξανά.");
-      setIsAdvancing(false);
-      setPhase("in");
-      return;
-    }
-    if (!data.user) {
-      router.replace("/login");
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("onboarding_answers").insert({
-      user_id: data.user.id,
-      answers: nextAnswers,
-    });
-
-    if (insertError) {
-      setSavingError("Κάτι πήγε στραβά κατά την αποθήκευση. Δοκίμασε ξανά.");
-      setIsAdvancing(false);
-      setPhase("in");
-      return;
-    }
-
-    // Confirm the row is readable (same session/RLS) before leaving; avoids dashboard → /onboarding loop.
-    const { data: verifyRows, error: verifyError } = await supabase
-      .from("onboarding_answers")
-      .select("answers")
-      .eq("user_id", data.user.id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    const verifyRaw = Array.isArray(verifyRows) ? verifyRows[0]?.answers : null;
-    const verifyOk = normalizeOnboardingAnswers(verifyRaw) !== null;
-
-    if (verifyError || !verifyOk) {
-      setSavingError(
-        "Η αποθήκευση ολοκληρώθηκε, αλλά δεν ήταν δυνατό να επιβεβαιωθεί. Ανανέωσε τη σελίδα ή δοκίμασε ξανά."
-      );
-      setIsAdvancing(false);
-      setPhase("in");
-      return;
-    }
-
-    setIsAdvancing(false);
-    setPhase("in");
-    window.location.href = "/dashboard";
-  }
-
-  const currentStep = Math.min(questions.length, currentIndex + 1);
-  const progressPercent = Math.min(
-    100,
-    Math.max(0, (currentStep / questions.length) * 100)
-  );
-
-  function onPick(choice: string) {
-    if (isAdvancing) return;
-
-    const qIndex = currentIndex;
-    const nextAnswers = [...answers];
-    nextAnswers[qIndex] = choice;
-    setAnswers(nextAnswers);
-
-    // If user reached the last question, all answers must be set.
-    if (qIndex === questions.length - 1 && nextAnswers.some((a) => !a)) {
-      setSavingError("Παρακαλώ διάλεξε μια επιλογή για κάθε ερώτηση.");
-      return;
-    }
-
-    setIsAdvancing(true);
-    setPhase("out");
-
-    // Small delay so the "out" animation is visible.
-    advanceTimeoutRef.current = window.setTimeout(() => {
-      const last = qIndex === questions.length - 1;
-      if (last) {
-        void saveToSupabase(nextAnswers);
-        return;
+  async function finish() {
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const lock = new Date();
+        lock.setDate(lock.getDate() + 30);
+        await supabase.from("profiles").upsert({
+          id: user.id,
+          identity_statement: identity.trim(),
+          identity_gender: gender,
+          identity_locked_until: lock.toISOString().slice(0, 10),
+          within_path_stage: "awake",
+          onboarding_done: true,
+          notify_time: notify ? "21:00" : null,
+        });
       }
-      setCurrentIndex((i) => i + 1);
-      setPhase("in");
-      setIsAdvancing(false);
-    }, 220);
+    } catch (e) {
+      // Μην μπλοκάρεις τον χρήστη σε σφάλμα — προχώρα στο dashboard.
+      console.error(e);
+    }
+    router.push("/dashboard");
   }
 
-  useEffect(() => {
-    return () => {
-      if (advanceTimeoutRef.current) window.clearTimeout(advanceTimeoutRef.current);
-    };
-  }, []);
+  // ---------- SCREENS ----------
+  if (step === 1)
+    return (
+      <Screen dark>
+        <h1 style={{ fontSize: 48, lineHeight: 1.2 }} className="within-fade-in">
+          Σταμάτα.<br />Δεν χρειάζεσαι<br />άλλο app.
+        </h1>
+        <p style={{ color: "#9a9a9a", fontSize: 18 }}>Εκτός αν διαφέρει.</p>
+        <Btn dark onClick={next}>Δείξε μου</Btn>
+      </Screen>
+    );
 
-  const question = questions[currentIndex];
+  if (step === 2)
+    return (
+      <Screen>
+        <h2 style={{ fontSize: 28, maxWidth: 520 }}>
+          Πόσα apps έχεις στο τηλέφωνό σου που σου υποσχέθηκαν αλλαγή;
+        </h2>
+        <p style={{ color: "var(--grey)" }}>Άλλαξες;</p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <Btn onClick={next}>Όχι αρκετά</Btn>
+          <Btn onClick={next}>Καθόλου</Btn>
+        </div>
+      </Screen>
+    );
 
-  return (
-    <main className="min-h-screen bg-white px-6">
-      <div className="mx-auto flex max-w-2xl flex-col pb-16 pt-10">
-        <header className="mb-8">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold">Onboarding</h1>
-              <p className="mt-1 text-sm text-neutral-600">
-                Ερώτηση {currentIndex + 1} / {questions.length}
-              </p>
-            </div>
-            <div className="w-28">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200">
-                <div
-                  className="h-full bg-black transition-[width] duration-300 ease-out"
-                  style={{ width: `${progressPercent}%` }}
-                />
+  if (step === 3)
+    return (
+      <Screen dark>
+        <h2 style={{ fontSize: 28, lineHeight: 1.4, maxWidth: 560 }} className="within-slide-up">
+          Δεν είναι τα apps το πρόβλημα.<br />Είναι αυτό που μετράνε.
+        </h2>
+        <p style={{ fontSize: 22 }}>Μετράνε τι κάνεις. Όχι ποιος γίνεσαι.</p>
+        <Btn dark onClick={next}>Δείξε μου τη διαφορά</Btn>
+      </Screen>
+    );
+
+  if (step === 4)
+    return (
+      <Screen>
+        <h2 style={{ fontSize: 28 }}>Ποιος θέλεις να γίνεις;</h2>
+        <p style={{ color: "var(--grey)", maxWidth: 460 }}>
+          Όχι τι θες να αλλάξεις. Ποιος θες να γίνεις.
+        </p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+          {(["f", "m", "n"] as Gender[]).map((g) => (
+            <button
+              key={g}
+              className="within-btn"
+              style={{ borderColor: gender === g ? "var(--gold)" : "var(--ink)", color: gender === g ? "var(--gold)" : "var(--ink)" }}
+              onClick={() => { setGender(g); setIdentity((v) => v || ""); }}
+            >
+              {TYPE_LABEL[g]}…
+            </button>
+          ))}
+        </div>
+        {gender && (
+          <>
+            <input
+              autoFocus
+              value={identity}
+              onChange={(e) => setIdentity(e.target.value)}
+              placeholder={`${TYPE_LABEL[gender]}…`}
+              className="within"
+              style={{
+                marginTop: 8, width: "100%", maxWidth: 480, fontSize: 22, textAlign: "center",
+                border: "none", borderBottom: "1px solid var(--ink)", background: "transparent",
+                padding: "10px 4px", outline: "none",
+              }}
+            />
+            {showWhispers && (
+              <div style={{ marginTop: 8, color: "#bdbdbd", fontSize: 16, lineHeight: 1.9 }} className="within-fade-in">
+                {WHISPERS[gender].map((w) => (
+                  <div key={w} style={{ cursor: "pointer" }} onClick={() => setIdentity(w)}>{w}</div>
+                ))}
               </div>
-            </div>
-          </div>
-        </header>
-
-        {authReady && postPaymentReturn ? (
-          <p className="mb-6 rounded-xl border border-black/10 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-            Η πληρωμή ολοκληρώθηκε. Συνέχισε με τις ερωτήσεις — δεν χρειάζεται να περιμένεις να ενημερωθεί η
-            συνδρομή στο σύστημα.
-          </p>
-        ) : null}
-
-        {!authReady ? (
-          <section className="flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-sm text-neutral-600">Φόρτωση...</div>
-            </div>
-          </section>
-        ) : (
-        <section className="relative">
-          <div
-            key={currentIndex}
-            className={[
-              "rounded-2xl border border-black/10 bg-white p-6 shadow-sm",
-              "transition-all duration-300 ease-out",
-              phase === "out" ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0",
-            ].join(" ")}
-            aria-live="polite"
-          >
-            <p className="text-lg font-medium text-black">{question.prompt}</p>
-
-            <div className="mt-6 grid gap-3">
-              {question.choices.map((choice) => (
-                <button
-                  key={choice}
-                  type="button"
-                  onClick={() => onPick(choice)}
-                  disabled={isAdvancing}
-                  className={[
-                    "w-full rounded-xl border border-black/20 bg-white px-5 py-4 text-left",
-                    "transition-colors duration-150",
-                    "hover:bg-black hover:text-white",
-                    "disabled:cursor-not-allowed disabled:opacity-70",
-                  ].join(" ")}
-                >
-                  {choice}
-                </button>
-              ))}
-            </div>
-
-            {savingError ? (
-              <p className="mt-5 text-sm font-medium text-black">{savingError}</p>
-            ) : null}
-          </div>
-
-          <div className="mt-4 text-xs text-neutral-500">
-            Επιλέξτε μία επιλογή για να συνεχίσετε αυτόματα.
-          </div>
-        </section>
+            )}
+            <Btn onClick={() => identity.trim().length > 3 && next()}>Συνέχεια</Btn>
+          </>
         )}
+      </Screen>
+    );
+
+  if (step === 5)
+    return (
+      <Screen dark>
+        <h1 style={{ fontSize: 48, lineHeight: 1.25, maxWidth: 640 }} className="within-fade-in">
+          {identity.trim()}
+        </h1>
+        {mirrorReady && (
+          <div className="within-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
+            <p style={{ fontSize: 20 }}>Αυτή/ός είσαι από σήμερα.</p>
+            <Btn dark onClick={next}>Ναι</Btn>
+          </div>
+        )}
+      </Screen>
+    );
+
+  if (step === 6)
+    return (
+      <Screen dark>
+        <div style={{ fontSize: 22, lineHeight: 1.7 }} className="within-slide-up">
+          Δεν θα σε ταΐσουμε κίνητρα.<br />
+          Δεν θα σε ξυπνάμε στις 6.<br />
+          Δεν θα σου μετράμε streaks.
+        </div>
+        <div style={{ fontSize: 22, lineHeight: 1.7, marginTop: 12 }}>
+          Θα σου κάνουμε μία ερώτηση το βράδυ.<br />
+          Και θα σου δείχνουμε ποιος γίνεσαι.
+        </div>
+        <Btn dark onClick={next}>Συνεχίζω</Btn>
+      </Screen>
+    );
+
+  if (step === 7)
+    return (
+      <Screen>
+        <h2 style={{ fontSize: 24 }}>Πού ήσουν σήμερα;</h2>
+        <WithinGrid value={grid} onChange={setGrid} showQuadrantLabel={false} />
+        {grid && (
+          <div className="within-fade-in" style={{ display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
+            <p style={{ fontSize: 18 }}>Έδρασες ως {identity.trim()};</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              <Btn onClick={() => { setAnswer("yes"); next(); }}>Ναι</Btn>
+              <Btn onClick={() => { setAnswer("partial"); next(); }}>Εν μέρει</Btn>
+              <Btn onClick={() => { setAnswer("no"); next(); }}>Όχι</Btn>
+            </div>
+          </div>
+        )}
+      </Screen>
+    );
+
+  if (step === 8) {
+    const g = gender ?? "n";
+    const q = grid ? quadrantOf(grid.x, grid.y) : "depleted";
+    const a = answer ?? "no";
+    return (
+      <Screen dark>
+        <div style={{ fontSize: 24, lineHeight: 1.6, maxWidth: 560 }} className="within-slide-up">
+          {quadrantLine(q, g)}<br />
+          {actionLine(a, g)}<br /><br />
+          Αυτό δεν είναι αποτυχία.<br />
+          Είναι το πρώτο σημείο στον χάρτη σου.
+        </div>
+        <Btn dark onClick={next}>Δες πού ξεκινάς</Btn>
+      </Screen>
+    );
+  }
+
+  if (step === 9)
+    return (
+      <Screen>
+        <WithinGrid value={grid} readOnly showQuadrantLabel={false} size={220} />
+        <div style={{ fontSize: 22, lineHeight: 1.7, maxWidth: 520 }}>
+          Σε 7 μέρες, θα δεις 7 σημεία.<br />
+          Σε 30, θα δεις ποιος γίνεσαι.<br />
+          Σε 90, θα την έχεις γίνει.
+        </div>
+        <Btn onClick={next}>Ξεκινάμε</Btn>
+      </Screen>
+    );
+
+  // step 10
+  return (
+    <Screen>
+      <h2 style={{ fontSize: 24, maxWidth: 460 }}>Θες να σου θυμίζουμε στις 9 κάθε βράδυ;</h2>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button className="within-btn" style={{ borderColor: notify ? "var(--gold)" : "var(--ink)", color: notify ? "var(--gold)" : "var(--ink)" }} onClick={() => setNotify(true)}>Ναι</button>
+        <button className="within-btn" style={{ borderColor: !notify ? "var(--gold)" : "var(--ink)", color: !notify ? "var(--gold)" : "var(--ink)" }} onClick={() => setNotify(false)}>Όχι τώρα</button>
       </div>
-    </main>
+      <Btn onClick={finish}>{saving ? "..." : "Μπες μέσα"}</Btn>
+    </Screen>
   );
 }

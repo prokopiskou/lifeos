@@ -47,13 +47,14 @@ export default async function middleware(request: NextRequest) {
     // Authenticated users δεν πρέπει να μένουν σε auth-landing pages (/login,/signup,/pricing).
     // Αν έχουν ολοκληρώσει onboarding -> /dashboard, αλλιώς -> /onboarding.
     // (Trial: η πρόσβαση δίνεται· paywall μπαίνει αργότερα μετά το πρώτο Pattern Mirror.)
-    const { data: onboardingRows } = await supabase
-      .from("onboarding_answers")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1);
+    const [{ data: profileRow }, { data: onboardingRows }] = await Promise.all([
+      supabase.from("profiles").select("onboarding_done").eq("id", user.id).maybeSingle(),
+      supabase.from("onboarding_answers").select("id").eq("user_id", user.id).limit(1),
+    ]);
 
-    const hasOnboarding = Array.isArray(onboardingRows) && onboardingRows.length > 0;
+    const hasOnboarding =
+      profileRow?.onboarding_done === true ||
+      (Array.isArray(onboardingRows) && onboardingRows.length > 0);
 
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = hasOnboarding ? "/dashboard" : "/onboarding";

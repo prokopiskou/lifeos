@@ -44,27 +44,21 @@ export default async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (isAuthLandingPath && user) {
-    const [{ data: onboardingRows }, { data: subscriptionRows }] = await Promise.all([
-      supabase
-        .from("onboarding_answers")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1),
-      supabase
-        .from("subscriptions")
-        .select("status")
-        .eq("user_id", user.id)
-        .limit(5),
-    ]);
+    // Authenticated users δεν πρέπει να μένουν σε auth-landing pages (/login,/signup,/pricing).
+    // Αν έχουν ολοκληρώσει onboarding -> /dashboard, αλλιώς -> /onboarding.
+    // (Trial: η πρόσβαση δίνεται· paywall μπαίνει αργότερα μετά το πρώτο Pattern Mirror.)
+    const { data: onboardingRows } = await supabase
+      .from("onboarding_answers")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1);
 
     const hasOnboarding = Array.isArray(onboardingRows) && onboardingRows.length > 0;
-    const hasSubscription = Array.isArray(subscriptionRows) && subscriptionRows.length > 0;
 
-    if (hasOnboarding || hasSubscription) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/dashboard";
-      return NextResponse.redirect(redirectUrl);
-    }
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = hasOnboarding ? "/dashboard" : "/onboarding";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (isAuthLandingPath) {

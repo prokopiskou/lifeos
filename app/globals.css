@@ -1,3 +1,43 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================
+   WITHIN OS — Design tokens (ενότητα 14 του brief)
+   ============================================================ */
+:root {
+  --ink: #000000;          /* pure black */
+  --paper: #FAFAF7;        /* off-white */
+  --gold: #C9A961;         /* gold accent — μόνο μικρά accents */
+  --grey: #6B6B6B;         /* secondary text */
+  /* CMU Concrete φορτώνεται ως web font· fallback serif μέχρι να μπει το αρχείο */
+  --font-within: "CMU Concrete", Georgia, "Times New Roman", serif;
+}
+
+/* Premium minimal base */
+.within {
+  font-family: var(--font-within);
+}
+
+/* Bordered buttons — sharp corners (no radius), 1px border */
+.within-btn {
+  font-family: var(--font-within);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 14px 32px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 200ms ease, color 200ms ease;
+  font-size: 18px;
+  line-height: 1.6;
+}
+.within-btn:hover { background: var(--ink); color: var(--paper); }
+.within-btn--invert { border-color: var(--paper); color: var(--paper); }
+.within-btn--invert:hover { background: var(--paper); color: var(--ink); }
+
+/* Animations (brief) */
+@keyframes within-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes within-slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.within-fade-in { animation: within-fade-in 800ms ease forwards; }
+.within-slide-up { animation: within-slide-up 600ms ease forwards; }

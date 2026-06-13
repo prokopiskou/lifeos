@@ -192,10 +192,17 @@ export default function CommunityFeedClient() {
                     : "border-black/10",
                 ].join(" ")}
               >
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="text-sm font-medium text-neutral-700">
-                    {post.is_admin ? "WithinSuccess" : post.author_label}
-                  </div>
+                <div
+                  className={[
+                    "mb-3 flex items-center",
+                    post.is_admin ? "justify-end" : "justify-between",
+                  ].join(" ")}
+                >
+                  {!post.is_admin ? (
+                    <div className="text-sm font-medium text-neutral-700">
+                      {post.author_label}
+                    </div>
+                  ) : null}
                   {post.is_admin ? (
                     <span
                       style={{ color: ACCENT }}

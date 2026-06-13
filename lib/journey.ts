@@ -4,6 +4,8 @@ export type JourneyRow = {
   week_tasks_completed: number;
   total_days_active: number;
   streak: number;
+  /** Highest streak ever recorded (updated on each task completion). */
+  best_streak: number;
 };
 
 export type WeekTheme = {

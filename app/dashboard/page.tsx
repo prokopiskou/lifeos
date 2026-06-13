@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 
 import { clampDay, clampWeek, type JourneyRow } from "@/lib/journey";
+import { isSundayInAthens } from "@/lib/is-sunday-athens";
 import { normalizeOnboardingAnswers } from "@/lib/onboarding-answers";
 import { createClient } from "@/lib/supabase/server";
 import BottomNav from "@/components/BottomNav";
-import LogoutButton from "@/components/LogoutButton";
 import DashboardClient from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +42,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const { data: journeyRows } = await supabase
     .from("user_journey")
-    .select("id, current_week, current_day, week_tasks_completed, total_days_active, streak")
+    .select(
+      "id, current_week, current_day, week_tasks_completed, total_days_active, streak, best_streak"
+    )
     .eq("user_id", userData.user.id)
     .limit(1);
 
@@ -63,8 +65,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         week_tasks_completed: 0,
         total_days_active: 0,
         streak: 0,
+        best_streak: 0,
+        within_path_stage: "Awake",
       })
-      .select("id, current_week, current_day, week_tasks_completed, total_days_active, streak")
+      .select(
+        "id, current_week, current_day, week_tasks_completed, total_days_active, streak, best_streak"
+      )
       .limit(1);
     journey = Array.isArray(created) ? created[0] : null;
     console.log("[dashboard/page] journey row initialized", {
@@ -80,7 +86,25 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     week_tasks_completed: Math.max(journey?.week_tasks_completed ?? 0, 0),
     total_days_active: Math.max(journey?.total_days_active ?? 0, 0),
     streak: Math.max(journey?.streak ?? 0, 0),
+    best_streak: Math.max(
+      typeof journey?.best_streak === "number" ? journey.best_streak : 0,
+      0
+    ),
   };
+
+  let showWeeklyReflection = false;
+  if (isSundayInAthens()) {
+    const { data: reflectionExisting, error: reflectionError } = await supabase
+      .from("weekly_reflections")
+      .select("id")
+      .eq("user_id", userData.user.id)
+      .eq("week_number", initialJourney.current_week)
+      .maybeSingle();
+
+    if (!reflectionError && !reflectionExisting) {
+      showWeeklyReflection = true;
+    }
+  }
 
   return (
     <>
@@ -88,8 +112,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         answers={parsed}
         initialJourney={initialJourney}
         showWelcomeLoading={searchParams?.welcome === "1"}
+        showWeeklyReflection={showWeeklyReflection}
+        reflectionWeekNumber={initialJourney.current_week}
       />
-      <LogoutButton />
       <BottomNav />
     </>
   );

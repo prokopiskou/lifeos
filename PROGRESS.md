@@ -18,8 +18,14 @@
 - `vercel.json`: cron `/api/cron/compute-state` κάθε βράδυ 23:30 (`30 23 * * *`).
 - ✅ `npx tsc --noEmit` περνάει χωρίς errors.
 
+## ✅ Phase 5 — Daily flow
+- `app/api/tasks/today/route.ts`: πρωινό task generation (Claude), πλήθος βάσει `task_size`, idempotent, γράφει `evidence_tasks`.
+- `app/api/checkin/route.ts`: βραδινό check-in → upsert `daily_checkins` + tone-appropriate μήνυμα (Claude, βάσει `tone_profile`).
+- `app/checkin/page.tsx`: ροή 15'' (grid → ερώτηση ταυτότητας → tasks → λέξη → tone μήνυμα).
+- ✅ tsc καθαρό.
+
 ## ⏳ Επόμενα (μη ξεκινημένα)
-Phase 5 daily flow (check-in UI + task generation πρωί + tone messaging βράδυ) · Phase 6 pattern mirror (weekly cron + 15 rules + admin override) · Phase 7 within path + admin panel · Phase 8 polish/paywall(test)/PWA.
+Phase 6 pattern mirror (weekly cron + 15 rules + admin override) · Phase 7 within path + admin panel · Phase 8 polish/paywall(test)/PWA.
 
 ## ⚠️ Χειροκίνητες ενέργειες owner
 1. **Push** τα τοπικά commits.

@@ -4,7 +4,7 @@ import { clampDay, clampWeek, type JourneyRow } from "@/lib/journey";
 import { normalizeOnboardingAnswers } from "@/lib/onboarding-answers";
 import { createClient } from "@/lib/supabase/server";
 import BottomNav from "@/components/BottomNav";
-import LogoutButton from "@/components/LogoutButton";
+import Header from "@/components/Header";
 import DashboardClient from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -84,12 +84,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   return (
     <>
+      <Header />
       <DashboardClient
         answers={parsed}
         initialJourney={initialJourney}
         showWelcomeLoading={searchParams?.welcome === "1"}
       />
-      <LogoutButton />
       <BottomNav />
     </>
   );

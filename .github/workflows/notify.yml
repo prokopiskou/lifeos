@@ -1,0 +1,27 @@
+name: Notify preview
+
+# Στέλνει Telegram μήνυμα ΜΟΛΙΣ το Vercel preview γίνει Ready — με το link του preview.
+on:
+  deployment_status:
+
+jobs:
+  notify:
+    # Μόνο επιτυχημένα PREVIEW deployments (όχι production, όχι failures).
+    if: >
+      github.event.deployment_status.state == 'success' &&
+      contains(github.event.deployment_status.environment, 'Preview')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Telegram preview link
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          PREVIEW_URL: ${{ github.event.deployment_status.environment_url }}
+          REPO: ${{ github.repository }}
+        run: |
+          TEXT="✅ Preview έτοιμο — ${REPO}
+          ${PREVIEW_URL}
+
+          Πάτα το link για να δεις την αλλαγή. Για merge: https://github.com/${REPO}/pulls"
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=789041137" \
+            --data-urlencode "text=${TEXT}"

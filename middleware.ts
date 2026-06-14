@@ -57,7 +57,7 @@ export default async function middleware(request: NextRequest) {
       (Array.isArray(onboardingRows) && onboardingRows.length > 0);
 
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = hasOnboarding ? "/dashboard" : "/onboarding";
+    redirectUrl.pathname = hasOnboarding ? "/today" : "/onboarding";
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }

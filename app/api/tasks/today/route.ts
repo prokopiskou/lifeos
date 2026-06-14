@@ -10,7 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const COUNT: Record<string, number> = { full: 3, half: 2, minimal: 1, none: 0 };
+// Ο owner θέλει ΕΝΑ ξεκάθαρο task τη μέρα (όχι 3). Μόνο "none" -> κανένα.
+const COUNT: Record<string, number> = { full: 1, half: 1, minimal: 1, none: 0 };
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -57,9 +58,10 @@ export async function GET() {
 Γένος δήλωσης: ${gender}
 Within Path stage: ${stage}
 Μέγεθος σήμερα: ${taskSize}
-Δώσε ${n} micro-action(s) που είναι ΑΠΟΔΕΙΞΗ της ταυτότητας, όχι generic productivity.
+Δώσε ΑΚΡΙΒΩΣ ΕΝΑ (1) ξεκάθαρο micro-action που είναι ΑΠΟΔΕΙΞΗ της ταυτότητας, όχι generic productivity.
 Κανόνες:
-- Κάθε task τόσο μικρό που δεν μπορεί να αποτύχει σε δύσκολη μέρα
+- Ένα και μόνο. Ξεκάθαρο, χωρίς υποερωτήματα.
+- Τόσο μικρό που δεν μπορεί να αποτύχει σε δύσκολη μέρα
 - Συγκεκριμένο, παρατηρήσιμο, ολοκληρώνεται σε <5 λεπτά
 - Καμία επιβολή, κανένα "πρέπει", κανένα emoji
 - Συμφωνία γένους: 'm'→αρσενικά, 'f'→θηλυκά, 'n'→απόφυγε έμφυλους τύπους

@@ -142,7 +142,7 @@ export default function OnboardingPage() {
       // Μην μπλοκάρεις τον χρήστη σε σφάλμα — προχώρα στο dashboard.
       console.error(e);
     }
-    router.push("/dashboard");
+    router.push("/today");
   }
 
   // ---------- SCREENS ----------

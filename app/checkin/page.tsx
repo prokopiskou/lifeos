@@ -92,7 +92,7 @@ export default function CheckinPage() {
   if (step === "tasks")
     return (
       <div className="within" style={wrap}>
-        <h2 style={{ fontSize: 20 }}>Τα σημερινά σου βήματα</h2>
+        <h2 style={{ fontSize: 20 }}>Το σημερινό σου βήμα</h2>
         {tasks.length === 0 && <p style={{ color: "var(--grey)" }}>Σήμερα, ένα tap ότι είσαι εδώ αρκεί.</p>}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 460, width: "100%" }}>
           {tasks.map((t, i) => (
@@ -133,7 +133,7 @@ export default function CheckinPage() {
   return (
     <div className="within" style={wrap}>
       <p style={{ fontSize: 22, lineHeight: 1.7, maxWidth: 520 }} className="within-fade-in">{message}</p>
-      <button className="within-btn" onClick={() => router.push("/dashboard")}>Στο dashboard</button>
+      <button className="within-btn" onClick={() => router.push("/today")}>Τέλος</button>
     </div>
   );
 }

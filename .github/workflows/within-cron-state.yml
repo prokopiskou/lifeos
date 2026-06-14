@@ -1,0 +1,19 @@
+name: Within OS — nightly state engine
+
+# Τρέχει το /api/cron/compute-state κάθε βράδυ 23:30 UTC (χωρίς Vercel Pro).
+on:
+  schedule:
+    - cron: "30 23 * * *"
+  workflow_dispatch:
+
+jobs:
+  compute-state:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping state engine
+        env:
+          APP_URL: ${{ vars.APP_URL || 'https://lifeos-theta-one.vercel.app' }}
+          CRON: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X GET "${APP_URL}/api/cron/compute-state" \
+            -H "Authorization: Bearer ${CRON}"

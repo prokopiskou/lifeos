@@ -24,8 +24,23 @@
 - `app/checkin/page.tsx`: ροή 15'' (grid → ερώτηση ταυτότητας → tasks → λέξη → tone μήνυμα).
 - ✅ tsc καθαρό.
 
-## ⏳ Επόμενα (μη ξεκινημένα)
-Phase 6 pattern mirror (weekly cron + 15 rules + admin override) · Phase 7 within path + admin panel · Phase 8 polish/paywall(test)/PWA.
+## ✅ Phase 6 — Pattern Mirror (weekly)
+- `app/api/cron/pattern-mirror/route.ts`: Κυριακή 21:00. Rule engine (priority: avoidance→restoration→identity→patterns→return→continuation), stage-adaptive Claude prompt, γράφει `pattern_mirrors`. Manual override: skip αν υπάρχει ήδη row για την εβδομάδα.
+- `vercel.json`: + cron `0 21 * * 0`.
+
+## ✅ Phase 7 — Within Path + Admin
+- `app/api/admin/promote/route.ts`: admin-only. Ενημερώνει `profiles.within_path_stage` + `stage_updated_at` (+ `user_journey` compat) και γράφει `path_letters` αν δοθεί γράμμα.
+- `AdminUsersClient`: το "Αποθήκευση" ζητά προαιρετικό personal letter (prompt) → καλεί `/api/admin/promote`.
+- `app/api/path-letter/route.ts`: GET αδιάβαστο γράμμα / POST mark-read.
+- `components/PathLetterModal.tsx` mountαρισμένο στο `layout.tsx`: ο χρήστης βλέπει το γράμμα ως modal μία φορά.
+
+## 🟡 Phase 8 — Polish (μερικώς)
+- `app/manifest.ts` (PWA, installable) + `viewport`/theme-color + appleWebApp στο `layout.tsx`. **ΣΗΜ:** πρόσθεσε icon files στο `/public/` + ξεμπλόκαρε το `icons` array.
+- `lib/access.ts`: trial (14 ημέρες) + subscription helper `computeAccess()`. (Δεν hard-gate-άρει — paywall enforcement μπαίνει όταν θες, χρησιμοποιώντας το helper στο /pricing/premium features.)
+- **Εκκρεμεί:** CMU Concrete font file· offline service worker· hard paywall enforcement μετά το trial· post-onboarding loading screen.
+
+---
+## ✅ ΣΥΝΟΨΗ: Phases 0→7 πλήρη + Phase 8 core. Όλο το core του brief λειτουργικό, tsc καθαρό.
 
 ## ⚠️ Χειροκίνητες ενέργειες owner
 1. **Push** τα τοπικά commits.

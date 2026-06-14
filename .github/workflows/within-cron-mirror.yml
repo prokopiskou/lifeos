@@ -1,0 +1,19 @@
+name: Within OS — weekly pattern mirror
+
+# Τρέχει το /api/cron/pattern-mirror κάθε Κυριακή 21:00 UTC (χωρίς Vercel Pro).
+on:
+  schedule:
+    - cron: "0 21 * * 0"
+  workflow_dispatch:
+
+jobs:
+  pattern-mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping pattern mirror
+        env:
+          APP_URL: ${{ vars.APP_URL || 'https://lifeos-theta-one.vercel.app' }}
+          CRON: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X GET "${APP_URL}/api/cron/pattern-mirror" \
+            -H "Authorization: Bearer ${CRON}"

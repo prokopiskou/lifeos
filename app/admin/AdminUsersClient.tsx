@@ -43,13 +43,18 @@ export default function AdminUsersClient({ initialRows }: Props) {
   async function save(userId: string) {
     const stage = stages[userId];
     if (!stage || saving[userId]) return;
+    // Προαιρετικό personal letter που θα δει ο χρήστης ως modal.
+    const letter = window.prompt(
+      "Προσωπικό γράμμα για αυτή τη μετάβαση stage (προαιρετικό — κενό = χωρίς γράμμα):",
+      ""
+    );
     setSaving((s) => ({ ...s, [userId]: true }));
     setFeedback((f) => ({ ...f, [userId]: null }));
     try {
-      const res = await fetch("/api/admin/within-path-stage", {
+      const res = await fetch("/api/admin/promote", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userId, within_path_stage: stage }),
+        body: JSON.stringify({ userId, stage, letter: letter ?? "" }),
       });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string };
       if (!res.ok || !data?.ok) {
